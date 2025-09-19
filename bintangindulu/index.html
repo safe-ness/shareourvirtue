@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Bintangin Dulu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+    <text y='.9em' font-size='90'>⭐</text>
+  </svg>">
+
+   <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Bintangin Dulu" />
+  <meta property="og:description" content="Kirimkan ide dan saran untuk kemajuan bersama!" />
+  <meta property="og:image" content="https://safe-ness.github.io/shareourvirtue/Bintangindulu/cover.jpg" />
+  <meta property="og:url" content="https://safe-ness.github.io/shareourvirtue/Bintangindulu" />
+  <meta property="og:type" content="website" />
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Bintangin Dulu ⭐⭐⭐</h1>
+  </header>
+
+  <div class="container">
+    <button class="btn" onclick="openModal()">⭐ Tambah Saran</button>
+      <div class="toast" id="toast">✅ Saran berhasil dikirim!</div>
+
+    <div class="search-box">
+      <input type="text" id="search" placeholder="🔍 Cari berdasarkan nama, bagian, atau saran..." oninput="onSearchInput()">
+    </div>
+
+    <div id="listSaran"></div>
+    <div id="pagination"></div>
+  </div>
+
+  <!-- Modal Input -->
+  <div class="modal" id="modalForm">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2>Tambah Saran</h2>
+      <form id="saranForm">
+        <input type="text" name="Nama" placeholder="Nama" required>
+        <input type="text" name="Bagian" placeholder="Bagian" required>
+        <textarea name="Saran" placeholder="Tulis saran..." required></textarea>
+        <input type="url" name="Url" placeholder="URL terkait (opsional)">
+        <button class="btn" type="submit">Kirim</button>
+      </form>
+      <div class="loader" id="formLoader" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Modal Detail Card -->
+  <div class="modal" id="modalDetail" onclick="outsideDetailModal(event)">
+    <div class="modal-content" id="modalDetailContent">
+      <span class="close" onclick="closeDetailModal()">&times;</span>
+      <div class="detail-modal-inner">
+        <h2 id="detailNama"></h2>
+        <div id="detailBagian"></div>
+        <div id="detailSaran"></div>
+        <div id="detailUrl"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay Loader (Fetch data) -->
+  <div id="overlayLoader"><div class="loader"></div></div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbz8H2LM-5YQUtwB7rohxMqbeIFj6big8m-77kJkecG83z4YnHngsLA_5_EzdKIhGCeM/exec"; // Ganti dengan URL Web App Google Apps Script
+    let currentPage = 1;
+    const perPage = 5;
+    let allData = [];
+
+    function showOverlayLoader() { document.getElementById("overlayLoader").style.display = "flex"; }
+    function hideOverlayLoader() { document.getElementById("overlayLoader").style.display = "none"; }
+
+    // async function loadData() {
+    //   showOverlayLoader();
+    //   const res = await fetch(API_URL);
+    //   allData = await res.json();
+    //   hideOverlayLoader();
+    //   renderList();
+    // }
+
+    async function loadData() {
+  showOverlayLoader();
+  const res = await fetch(API_URL);
+  allData = await res.json();
+
+  // balik urutan biar yang baru di atas
+  allData = allData.reverse();
+
+  hideOverlayLoader();
+  renderList();
+}
+
+
+    function onSearchInput() {
+      currentPage = 1;
+      renderList();
+    }
+
+    function renderList() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const filtered = allData.filter(item =>
+        (item.Nama || "").toLowerCase().includes(search) ||
+        (item.Bagian || "").toLowerCase().includes(search) ||
+        (item.Saran || "").toLowerCase().includes(search)
+      );
+
+      const start = (currentPage - 1) * perPage;
+      const paginated = filtered.slice(start, start + perPage);
+
+      document.getElementById("listSaran").innerHTML = paginated.map((d, idx) => `
+        <div class="card" onclick="showDetailModal(${start + idx})" style="cursor:pointer;">
+          <strong>${d.Nama} (${d.Bagian})</strong>
+          <div>${d.Saran}</div>
+          <div>${d.Url ? `<a href='${d.Url}' target='_blank'>${d.Url}</a>` : ""}</div>
+        </div>
+      `).join("");
+
+      renderPagination(Math.ceil(filtered.length / perPage), currentPage);
+
+      // Simpan filtered ke global agar bisa diakses di showDetailModal
+      window._filteredData = filtered;
+    }
+
+    function showDetailModal(idx) {
+      const data = window._filteredData ? window._filteredData[idx] : allData[idx];
+      if (!data) return;
+      document.getElementById("detailNama").textContent = data.Nama || "-";
+      document.getElementById("detailBagian").innerHTML = `<b>Bagian:</b> ${data.Bagian || "-"}`;
+      document.getElementById("detailSaran").innerHTML = `<b>Saran:</b><br><span>${data.Saran || "-"}</span>`;
+      document.getElementById("detailUrl").innerHTML = data.Url
+        ? `<b>URL:</b> <a href="${data.Url}" target="_blank">${data.Url}</a>`
+        : "";
+      document.getElementById("modalDetail").style.display = "flex";
+    }
+
+    function closeDetailModal() {
+      document.getElementById("modalDetail").style.display = "none";
+    }
+
+    function outsideDetailModal(e) {
+      if (e.target.id === "modalDetail") {
+        closeDetailModal();
+      }
+    }
+
+    function renderPagination(totalPages, currentPage) {
+      const pagination = document.getElementById("pagination");
+      let buttons = "";
+
+      if (currentPage > 1) {
+        buttons += `<button onclick="gotoPage(${currentPage - 1})">« Prev</button>`;
+      }
+
+      if (currentPage > 3) {
+        buttons += `<button onclick="gotoPage(1)">1</button>`;
+        if (currentPage > 4) buttons += `<span>...</span>`;
+      }
+
+      for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+        buttons += `<button onclick="gotoPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+      }
+
+      if (currentPage < totalPages - 2) {
+        if (currentPage < totalPages - 3) buttons += `<span>...</span>`;
+        buttons += `<button onclick="gotoPage(${totalPages})">${totalPages}</button>`;
+      }
+
+      if (currentPage < totalPages) {
+        buttons += `<button onclick="gotoPage(${currentPage + 1})">Next »</button>`;
+      }
+
+      pagination.innerHTML = buttons;
+    }
+
+    function gotoPage(p) {
+      currentPage = p;
+      renderList();
+    }
+
+    function openModal() { document.getElementById("modalForm").style.display = "flex"; }
+    function closeModal() { document.getElementById("modalForm").style.display = "none"; }
+
+    document.getElementById("saranForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const formData = Object.fromEntries(new FormData(e.target).entries());
+      document.getElementById("formLoader").style.display = "block";
+
+      await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify(formData)
+      });
+
+      document.getElementById("formLoader").style.display = "none";
+      e.target.reset();
+      closeModal();
+      showToast();
+      loadData();
+    });
+
+    function showToast() {
+      const toast = document.getElementById("toast");
+      toast.style.display = "block";
+      setTimeout(() => { toast.style.display = "none"; }, 3000);
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
